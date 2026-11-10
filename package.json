@@ -8,5 +8,11 @@
     "build": "npm --prefix frontend run build",
     "start": "npm --prefix frontend run start",
     "lint": "npm --prefix frontend run lint"
+  },
+  "workspaces": [
+    "frontend"
+  ],
+  "dependencies": {
+    "next": "14.2.5"
   }
 }
