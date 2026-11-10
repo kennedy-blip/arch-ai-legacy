@@ -1,0 +1,90 @@
+version: '3.8'
+
+services:
+  # =========================================================================
+  # Neo4j 5.x Graph Database with APOC Plugin
+  # Stores Polyglot AST Entities (Function, Class, Module, DatabaseTable)
+  # and Traversal Relationships (CALLS, MUTATES_TABLE, IN_MODULE, COMMITTED)
+  # =========================================================================
+  neo4j:
+    image: neo4j:5.20.0-community
+    container_name: archaeo-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"   # Neo4j Browser UI
+      - "7687:7687"   # Bolt Protocol for Async Python Driver
+    environment:
+      - NEO4J_AUTH=neo4j/archaeocode2024
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,custom.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=2G
+      - NEO4J_dbms_memory_pagecache_size=1G
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_plugins:/plugins
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # =========================================================================
+  # Qdrant Vector Database
+  # Indexes Function Embeddings for Seed Semantic Code Search
+  # =========================================================================
+  qdrant:
+    image: qdrant/qdrant:v1.9.0
+    container_name: archaeo-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # HTTP REST API
+      - "6334:6334"   # gRPC API
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=4
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:6333/readyz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # =========================================================================
+  # Redis 7.x
+  # In-memory Caching for AST Parse Results, Token Graphs, and Session State
+  # =========================================================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: archaeo-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  neo4j_data:
+    driver: local
+  neo4j_logs:
+    driver: local
+  neo4j_plugins:
+    driver: local
+  qdrant_data:
+    driver: local
+  redis_data:
+    driver: local
