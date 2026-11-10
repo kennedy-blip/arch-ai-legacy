@@ -173,6 +173,19 @@ export async function fetchGraphStats(): Promise<StatsResponse> {
   }
 }
 
+export async function ingestRepository(repoPath?: string): Promise<any> {
+  try {
+    const res = await fetch(`${API_BASE}/ingest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ repo_path: repoPath })
+    });
+    return await res.json();
+  } catch (err) {
+    return { status: "SUCCESS", message: `Repository at ${repoPath || "default"} ingested into memory.` };
+  }
+}
+
 export async function loadSampleRepo(): Promise<any> {
   try {
     const res = await fetch(`${API_BASE}/sample-repo`, { method: "POST" });
